@@ -3,6 +3,7 @@ import { useState, useEffect } from 'react';
 import { Link, Outlet, useLocation, useNavigate } from 'react-router-dom';
 import logo from "../assets/logo.png";
 
+
 const Layout = () => {
     const navigate = useNavigate();
     const location = useLocation();
