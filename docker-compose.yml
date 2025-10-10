@@ -2,13 +2,13 @@ services:
   backend:
     build:
       context: ./backend
-    container_name: invoice_backend
+    container_name: stocks_backend
     ports:
       - 4041:4001
 
   frontend:
     build:
       context: ./frontend
-    container_name: invoice_frontend
+    container_name: stocks_frontend
     ports:
       - 4040:3111
