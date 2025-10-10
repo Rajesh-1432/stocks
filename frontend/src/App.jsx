@@ -4,7 +4,7 @@ import { BrowserRouter as Router, Routes, Route, Navigate, useLocation, useNavig
 import { jwtDecode } from "jwt-decode";
 
 // Lazy load components
-const Layout = lazy(() => import("./layout/Layout"));
+const Layout = lazy(() => import("./Layout/Layout"));
 const Index = lazy(() => import("./pages/Index"));
 const Home = lazy(() => import("./pages/Home"));
 const Users = lazy(() => import("./pages/Users"));
