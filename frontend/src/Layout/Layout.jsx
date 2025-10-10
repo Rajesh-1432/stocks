@@ -3,7 +3,6 @@ import { useState, useEffect } from 'react';
 import { Link, Outlet, useLocation, useNavigate } from 'react-router-dom';
 import logo from "../assets/logo.png";
 
-
 const Layout = () => {
     const navigate = useNavigate();
     const location = useLocation();
@@ -12,8 +11,14 @@ const Layout = () => {
 
     const menuItems = [
         { path: "/", label: "Home", icon: <Home size={18} /> },
-        { path: "/users", label: "Users", icon: <User size={18} /> },
+        { path: "/users", label: "Users", icon: <User size={18} />, role: "admin" },
     ];
+
+    // Filter menu items based on user role
+    const allowedMenuItems = menuItems.filter(item => {
+        if (!item.role) return true; // accessible to all
+        return userInfo?.role === item.role;
+    });
 
     useEffect(() => {
         const storedUser = localStorage.getItem("userInfo");
@@ -26,6 +31,13 @@ const Layout = () => {
         }
     }, []);
 
+    // Redirect non-admin users trying to access /users
+    useEffect(() => {
+        if (location.pathname === "/users" && userInfo?.role !== "admin") {
+            navigate("/", { replace: true });
+        }
+    }, [location.pathname, userInfo, navigate]);
+
     const handleLogout = () => {
         localStorage.removeItem("authToken");
         localStorage.removeItem("userInfo");
@@ -35,11 +47,11 @@ const Layout = () => {
 
     return (
         <div className="h-screen flex flex-col bg-gray-50">
-            {/* Fixed Navbar */}
+            {/* Navbar */}
             <nav className="flex-shrink-0 bg-white shadow-sm border-b border-gray-200">
                 <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
                     <div className="flex items-center justify-between h-16">
-                        {/* Left section - Logo and Brand */}
+                        {/* Left: Logo */}
                         <div className="flex items-center space-x-4">
                             <div className="flex items-center space-x-3">
                                 <img 
@@ -47,7 +59,6 @@ const Layout = () => {
                                     alt="Stocks Dashboard" 
                                     className="w-10 h-10 rounded-lg shadow-sm"
                                     onError={(e) => {
-                                        // Fallback if logo fails to load
                                         e.target.style.display = 'none';
                                         e.target.nextSibling.style.display = 'flex';
                                     }}
@@ -64,9 +75,9 @@ const Layout = () => {
                             </div>
                         </div>
 
-                        {/* Center section - Navigation Links */}
+                        {/* Center: Navigation */}
                         <div className="hidden md:flex items-center space-x-1">
-                            {menuItems.map((item) => (
+                            {allowedMenuItems.map((item) => (
                                 <Link
                                     key={item.path}
                                     to={item.path}
@@ -84,16 +95,16 @@ const Layout = () => {
                             ))}
                         </div>
 
-                        {/* Right section - Search, Actions and User */}
+                        {/* Right: User & Actions */}
                         <div className="flex items-center space-x-4">
-                            {/* Mobile Navigation Menu */}
+                            {/* Mobile menu */}
                             <div className="md:hidden">
                                 <select
                                     value={location.pathname}
                                     onChange={(e) => navigate(e.target.value)}
                                     className="block w-full px-3 py-2 border border-gray-300 rounded-lg bg-white text-sm focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
                                 >
-                                    {menuItems.map((item) => (
+                                    {allowedMenuItems.map((item) => (
                                         <option key={item.path} value={item.path}>
                                             {item.label}
                                         </option>
@@ -122,7 +133,6 @@ const Layout = () => {
                                     </div>
                                 </button>
 
-                                {/* User Dropdown Menu */}
                                 {showUserMenu && (
                                     <div className="absolute right-0 mt-2 w-56 bg-white rounded-lg shadow-lg border border-gray-200 py-2 z-50">
                                         <div className="px-4 py-3 border-b border-gray-200">
@@ -165,7 +175,7 @@ const Layout = () => {
                 </div>
             </div>
 
-            {/* Scrollable Main Content Area */}
+            {/* Main Content */}
             <main className="flex-1 overflow-hidden">
                 <div className="h-full overflow-auto">
                     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
@@ -174,7 +184,7 @@ const Layout = () => {
                 </div>
             </main>
 
-            {/* Click outside to close user menu */}
+            {/* Click outside to close menu */}
             {showUserMenu && (
                 <div
                     className="fixed inset-0 z-40"

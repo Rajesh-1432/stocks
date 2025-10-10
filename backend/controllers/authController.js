@@ -9,38 +9,27 @@ const JWT_SECRET = process.env.JWT_SECRET;
 
 class AuthController {
   user_register = async (req, res) => {
-    const { name, email, password } = req.body;
-
+    const { name, email, password, role } = req.body;
+  
     try {
-      const get_user = await userModel.findOne({ email }).select("+password");
-      if (get_user) {
-        return res.status(404).json({ message: "Email already exists" });
+      const existingUser = await userModel.findOne({ email });
+      if (existingUser) {
+        return res.status(409).json({ message: "Email already exists" });
       }
-
-      const user = await userModel.create({
-        name,
-        email,
-        password: await bcrypt.hash(password, 9),
-      });
-
-      const token = await jwt.sign(
-        {
-          name: user.name,
-          email: user.email,
-          _id: user.id,
-        },
+  
+      const hashedPassword = await bcrypt.hash(password, 9);
+      const user = await userModel.create({ name, email, role, password: hashedPassword });
+  
+      const token = jwt.sign(
+        { _id: user._id, role: user.role, name: user.name, email: user.email },
         JWT_SECRET,
-        {
-          expiresIn: "1d",
-        }
+        { expiresIn: "1d" }
       );
-
-      return res
-        .status(201)
-        .json({ message: "User successfully registered", token });
+  
+      return res.status(201).json({ message: "User successfully registered", token });
     } catch (error) {
-      console.log(error);
-      return res.status(500).json({ message: "Internal Server error" });
+      console.error(error);
+      return res.status(500).json({ message: "Internal Server Error" });
     }
   };
 
@@ -60,9 +49,10 @@ class AuthController {
 
       const token = await jwt.sign(
         {
+          _id: user._id,
+          role: user.role,
           name: user.name,
           email: user.email,
-          _id: user.id,
         },
         JWT_SECRET,
         {
@@ -94,6 +84,58 @@ class AuthController {
       res.status(500).json({
         success: false,
         message: "Error fetching users",
+        error: error.message,
+      });
+    }
+  };
+  delete_user = async (req, res) => {
+    try {
+      const userIdToDelete = req.params.id;
+      
+      // Get current user ID from the authenticated user
+      const currentUserId = req.user._id.toString();
+  
+      // Prevent user from deleting themselves
+      if (userIdToDelete === currentUserId) {
+        return res.status(403).json({
+          success: false,
+          message: "You cannot delete yourself",
+        });
+      }
+  
+      // Check if user exists before deleting
+      const userExists = await userModel.findById(userIdToDelete);
+      if (!userExists) {
+        return res.status(404).json({
+          success: false,
+          message: "User not found",
+        });
+      }
+  
+      // Delete the user
+      const data = await userModel.deleteOne({ _id: userIdToDelete });
+  
+      // Check if deletion was successful
+      if (data.deletedCount === 0) {
+        return res.status(404).json({
+          success: false,
+          message: "User not found or already deleted",
+        });
+      }
+  
+      // Return success response
+      res.status(200).json({
+        success: true,
+        message: "User deleted successfully",
+        data: data,
+      });
+    } catch (error) {
+      console.error("Error deleting user:", error);
+  
+      // Return error response
+      res.status(500).json({
+        success: false,
+        message: "Error deleting user",
         error: error.message,
       });
     }
