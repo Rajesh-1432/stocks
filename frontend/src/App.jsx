@@ -19,7 +19,6 @@ const Loading = ({ text = "Loading..." }) => (
 );
 
 const AuthenticatedApp = ({ onLogout }) => {
-  console.log("🔥 AuthenticatedApp rendered");
   
   return (
     <Suspense fallback={<Loading text="Loading application..." />}>
@@ -54,22 +53,18 @@ const AppContent = () => {
   const navigate = useNavigate();
 
   useEffect(() => {
-    console.log("🔍 Checking authentication...");
     
     const checkAuthentication = () => {
       try {
         const token = localStorage.getItem("authToken");
-        console.log("🔑 Token found:", !!token);
 
         if (token) {
           try {
             const decoded = jwtDecode(token);
-            console.log("✅ Token decoded successfully:", decoded);
             setUserInfo(decoded);
             localStorage.setItem("userInfo", JSON.stringify(decoded));
             setIsAuthenticated(true);
             if (location.pathname === "/login") {
-              console.log("📍 Redirecting from login to home");
               navigate("/", { replace: true });
             }
           } catch (decodeError) {
@@ -77,10 +72,8 @@ const AppContent = () => {
             handleLogout();
           }
         } else {
-          console.log("⚠️ No token found, user not authenticated");
           setIsAuthenticated(false);
           if (location.pathname !== "/login") {
-            console.log("📍 Redirecting to login");
             navigate("/login", { replace: true });
           }
         }
@@ -91,7 +84,6 @@ const AppContent = () => {
       } finally {
         setIsLoading(false);
         setAuthChecked(true);
-        console.log("✅ Authentication check completed");
       }
     };
 
@@ -99,7 +91,6 @@ const AppContent = () => {
   }, [location.pathname, navigate]);
 
   const handleLoginSuccess = (token) => {
-    console.log("🎉 Login successful");
     localStorage.setItem("authToken", token);
     try {
       const decoded = jwtDecode(token);
@@ -114,7 +105,6 @@ const AppContent = () => {
   };
 
   const handleLogout = () => {
-    console.log("👋 Logging out...");
     localStorage.removeItem("authToken");
     localStorage.removeItem("userInfo");
     setUserInfo(null);
@@ -125,8 +115,6 @@ const AppContent = () => {
   if (isLoading || !authChecked) {
     return <Loading text="Checking authentication..." />;
   }
-
-  console.log("🚦 App state:", { isAuthenticated, currentPath: location.pathname });
 
   return (
     <>
@@ -141,7 +129,6 @@ const AppContent = () => {
 };
 
 const App = () => {
-  console.log("🚀 App component rendered");
   return (
     <Router>
       <AppContent />

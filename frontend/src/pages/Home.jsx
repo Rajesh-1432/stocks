@@ -56,22 +56,11 @@ const OptionsAnalysis = () => {
   const processData = () => {
     if (!fyersData || fyersData.length === 0) return;
 
-    console.log("Sample data record:", fyersData[0]);
     const map = {};
 
     // Process each row (same logic as Node.js)
     fyersData.forEach((r, index) => {
-      // Debug first few records
-      if (index < 3) {
-        console.log(`Record ${index}:`, {
-          strikePrice: r["Strike Price"],
-          optionType: r["Option Type"],
-          ltp: r["LTP"],
-          volume: r["T.Volume"],
-          avgPrice: r["Avg Price"],
-          oi: r["OI"]
-        });
-      }
+    
 
       // For your data, it looks like Strike Price might be in "No.of contracts" field
       // and Option Type might be in "Exp. Date" field based on the sample
@@ -79,7 +68,6 @@ const OptionsAnalysis = () => {
       const type = (r["Exp. Date"] || r["Option Type"] || r.optionType || "").toString().trim().toUpperCase();
       
       if (!strike || (type !== "CE" && type !== "PE")) {
-        if (index < 5) console.log(`Skipping record ${index}: strike=${strike}, type=${type}`);
         return;
       }
 
