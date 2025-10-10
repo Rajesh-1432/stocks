@@ -4,11 +4,11 @@ services:
       context: ./backend
     container_name: stocks_backend
     ports:
-      - 4041:4001
+      - 4042:4001
 
   frontend:
     build:
       context: ./frontend
     container_name: stocks_frontend
     ports:
-      - 4040:3111
+      - 4043:3111
