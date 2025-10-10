@@ -1,0 +1,14 @@
+services:
+  backend:
+    build:
+      context: ./backend
+    container_name: invoice_backend
+    ports:
+      - 4041:4001
+
+  frontend:
+    build:
+      context: ./frontend
+    container_name: invoice_frontend
+    ports:
+      - 4040:3111
