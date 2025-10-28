@@ -10,7 +10,6 @@ const OptionsAnalysis = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
-  // Utility functions (same as in Node.js)
   const fmt = (num) => {
     if (num === null || num === undefined || Number.isNaN(num)) return "-";
     return (Number(num) / 10000000).toLocaleString(undefined, { 
@@ -42,8 +41,11 @@ const OptionsAnalysis = () => {
     try {
       setLoading(true);
       const response = await api.get('/api/auth/get-fyers-data');
-      // Handle the nested response structure
       const data = response.data?.data || response.data || [];
+      // console.log('Fetched data count:', data.length);
+      if (data.length > 0) {
+        // console.log('Sample record:', data[0]);
+      }
       setFyersData(data);
     } catch (error) {
       console.error('Error fetching fyers data:', error);
@@ -54,41 +56,85 @@ const OptionsAnalysis = () => {
   };
 
   const processData = () => {
-    if (!fyersData || fyersData.length === 0) return;
+    if (!fyersData || fyersData.length === 0) {
+      console.log('No data to process');
+      return;
+    }
 
+    // console.log('Processing data...', fyersData.length, 'records');
+    // console.log('First 3 records:', fyersData.slice(0, 3));
     const map = {};
 
-    // Process each row (same logic as Node.js)
-    fyersData.forEach((r, index) => {
-    
-
-      // For your data, it looks like Strike Price might be in "No.of contracts" field
-      // and Option Type might be in "Exp. Date" field based on the sample
-      const strike = (r["No.of contracts"] || r["Strike Price"] || r.strikePrice || "").toString().trim();
-      const type = (r["Exp. Date"] || r["Option Type"] || r.optionType || "").toString().trim().toUpperCase();
+    // Group by strike price
+    fyersData.forEach((r, idx) => {
+      const strike = (r["Strike Price"] || "").toString().trim();
       
-      if (!strike || (type !== "CE" && type !== "PE")) {
+      if (idx < 5) {
+        // console.log(`Record ${idx}:`, {
+        //   strike: r["Strike Price"],
+        //   ltp: r["LTP"],
+        //   volume: r["T.Volume"],
+        //   avgPrice: r["Avg Price"],
+        //   oi: r["OI"]
+        // });
+      }
+      
+      if (!strike) {
+        console.log('Skipping record - no strike:', r);
         return;
       }
 
-      const ltp = parseFloat(r["LTP"] || r.ltp) || 0;
-      const tvol = parseFloat(r["T.Volume"] || r.tVolume || r.volume) || 0;
-      const avgPrice = parseFloat(r["Avg Price"] || r.avgPrice) || 0;
-      const oi = parseFloat(r["OI"] || r.oi || r.openInterest) || 0;
+      const ltp = parseFloat(r["LTP"]) || 0;
+      const tvol = parseFloat(r["T.Volume"]) || 0;
+      const avgPrice = parseFloat(r["Avg Price"]) || 0;
+      const oi = parseFloat(r["OI"]) || 0;
 
       const metrics = {
+        ltp,
         ltpVol: ltp * tvol,
         avgVol: avgPrice * tvol,
         avgOi: ltp * oi,
       };
 
-      if (!map[strike]) map[strike] = { CE: null, PE: null };
-      map[strike][type] = metrics;
+      if (!map[strike]) {
+        map[strike] = [];
+      }
+      map[strike].push(metrics);
+    });
+    
+    // console.log('Grouped strikes:', Object.keys(map).length);
+    // console.log('First few strikes:', Object.keys(map).slice(0, 5));
+
+    // For each strike, sort by LTP (higher = CE, lower = PE)
+    const finalMap = {};
+    Object.keys(map).forEach(strike => {
+      const records = map[strike];
+      
+      // console.log(`Strike ${strike}: ${records.length} records, LTPs:`, records.map(r => r.ltp));
+      
+      if (records.length >= 2) {
+        // Sort by LTP descending
+        records.sort((a, b) => b.ltp - a.ltp);
+        
+        finalMap[strike] = {
+          CE: records[0], // Higher LTP = Call
+          PE: records[1]  // Lower LTP = Put
+        };
+      } else if (records.length === 1) {
+        // If only one record, we can't determine CE/PE, skip this strike
+        // console.log(`Skipping strike ${strike}: only one record`);
+      }
     });
 
-    const strikes = Object.keys(map).sort((a, b) => parseFloat(a) - parseFloat(b));
+    const strikes = Object.keys(finalMap).sort((a, b) => parseFloat(a) - parseFloat(b));
+    // console.log('Final processed strikes:', strikes.length);
+    // console.log('Strikes:', strikes);
 
-    // Initialize stats (same as Node.js)
+    if (strikes.length === 0) {
+      // console.log('No valid strike pairs found');
+      return;
+    }
+
     const newStats = {
       sumLtpvol: { min: Infinity, max: -Infinity },
       diffLtpVol: { min: Infinity, max: -Infinity },
@@ -100,8 +146,8 @@ const OptionsAnalysis = () => {
     };
 
     const rowData = strikes.map((strike) => {
-      const CE = map[strike].CE || { ltpVol: 0, avgVol: 0, avgOi: 0 };
-      const PE = map[strike].PE || { ltpVol: 0, avgVol: 0, avgOi: 0 };
+      const CE = finalMap[strike].CE || { ltpVol: 0, avgVol: 0, avgOi: 0 };
+      const PE = finalMap[strike].PE || { ltpVol: 0, avgVol: 0, avgOi: 0 };
 
       const diffLtpVol = CE.ltpVol - PE.ltpVol;
       const diffAvgVol = CE.avgVol - PE.avgVol;
@@ -111,7 +157,6 @@ const OptionsAnalysis = () => {
       const sumAvgOi = CE.avgOi + PE.avgOi;
       const avgratio = diffAvgVol !== 0 ? Math.abs((sumAvgvol / diffAvgVol)/10) : 0;
 
-      // Update stats
       newStats.sumLtpvol.min = Math.min(newStats.sumLtpvol.min, sumLtpvol);
       newStats.sumLtpvol.max = Math.max(newStats.sumLtpvol.max, sumLtpvol);
       newStats.diffLtpVol.min = Math.min(newStats.diffLtpVol.min, diffLtpVol);
@@ -167,7 +212,6 @@ const OptionsAnalysis = () => {
 
   useEffect(() => {
     fetchFyersData();
-    // Auto-refresh every 10 seconds
     const interval = setInterval(() => {
       fetchFyersData();
     }, 10000);
@@ -182,14 +226,12 @@ const OptionsAnalysis = () => {
   }, [fyersData]);
 
   useEffect(() => {
-    // Check for highlighting conditions and play sound
     const hasHighlight = processedData.some(r => 
       r.diffLtpVol < 0 && r.diffAvgVol > 0 && r.avgratio >= 0.1 && r.avgratio <= 1 && r.diffAvgOi > 0
     );
     
     if (hasHighlight) {
       playAlertSound();
-      // Scroll to first highlighted row
       const firstHighlightIndex = processedData.findIndex(r => 
         r.diffLtpVol < 0 && r.diffAvgVol > 0 && r.avgratio >= 0.1 && r.avgratio <= 1 && r.diffAvgOi > 0
       );
@@ -292,13 +334,18 @@ const OptionsAnalysis = () => {
       <div className="max-w-7xl mx-auto">
         <h2 className="text-xl sm:text-2xl font-bold mb-3 sm:mb-4">Options Analysis</h2>
         
-        <input
-          type="text"
-          placeholder="Search strike..."
-          className="mb-3 sm:mb-4 p-2 w-full sm:w-64 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
-          value={searchFilter}
-          onChange={(e) => setSearchFilter(e.target.value)}
-        />
+        <div className="mb-3 sm:mb-4 flex flex-col sm:flex-row gap-2 items-start sm:items-center">
+          <input
+            type="text"
+            placeholder="Search strike..."
+            className="p-2 w-full sm:w-64 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
+            value={searchFilter}
+            onChange={(e) => setSearchFilter(e.target.value)}
+          />
+          <div className="text-sm text-gray-600">
+            Records: {fyersData.length} | Strikes: {processedData.length}
+          </div>
+        </div>
 
         <div className="bg-white rounded-lg shadow-md overflow-hidden">
           <div className="table-wrapper">
@@ -381,7 +428,7 @@ const OptionsAnalysis = () => {
         
         {processedData.length === 0 && !loading && (
           <div className="text-center mt-8 text-gray-600">
-            No data available or invalid data format
+            {fyersData.length === 0 ? 'No data available' : 'Processing data...'}
           </div>
         )}
       </div>
