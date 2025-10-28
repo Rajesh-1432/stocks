@@ -1,28 +1,28 @@
-import React, { useEffect, useState } from 'react';
-import api from '@/utils/api';
+import React, { useEffect, useState } from "react";
+import api from "@/utils/api";
 
 const OptionsAnalysis = () => {
   const [fyersData, setFyersData] = useState([]);
   const [processedData, setProcessedData] = useState([]);
   const [stats, setStats] = useState(null);
-  const [searchFilter, setSearchFilter] = useState('');
+  const [searchFilter, setSearchFilter] = useState("");
   const [sortConfig, setSortConfig] = useState({ key: null, ascending: true });
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
   const fmt = (num) => {
     if (num === null || num === undefined || Number.isNaN(num)) return "-";
-    return (Number(num) / 10000000).toLocaleString(undefined, { 
-      minimumFractionDigits: 2, 
-      maximumFractionDigits: 2 
+    return (Number(num) / 10000000).toLocaleString(undefined, {
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2,
     });
   };
 
   const fmt1 = (num) => {
     if (num === null || num === undefined || Number.isNaN(num)) return "-";
-    return Number(num).toLocaleString(undefined, { 
-      minimumFractionDigits: 2, 
-      maximumFractionDigits: 2 
+    return Number(num).toLocaleString(undefined, {
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2,
     });
   };
 
@@ -40,16 +40,12 @@ const OptionsAnalysis = () => {
   const fetchFyersData = async () => {
     try {
       setLoading(true);
-      const response = await api.get('/api/auth/get-fyers-data');
+      const response = await api.get("/api/auth/get-fyers-data");
       const data = response.data?.data || response.data || [];
-      // console.log('Fetched data count:', data.length);
-      if (data.length > 0) {
-        // console.log('Sample record:', data[0]);
-      }
       setFyersData(data);
     } catch (error) {
-      console.error('Error fetching fyers data:', error);
-      setError('Failed to fetch data');
+      console.error("Error fetching fyers data:", error);
+      setError("Failed to fetch data");
     } finally {
       setLoading(false);
     }
@@ -57,30 +53,18 @@ const OptionsAnalysis = () => {
 
   const processData = () => {
     if (!fyersData || fyersData.length === 0) {
-      console.log('No data to process');
+      console.log("No data to process");
       return;
     }
 
-    // console.log('Processing data...', fyersData.length, 'records');
-    // console.log('First 3 records:', fyersData.slice(0, 3));
     const map = {};
 
     // Group by strike price
     fyersData.forEach((r, idx) => {
       const strike = (r["Strike Price"] || "").toString().trim();
-      
-      if (idx < 5) {
-        // console.log(`Record ${idx}:`, {
-        //   strike: r["Strike Price"],
-        //   ltp: r["LTP"],
-        //   volume: r["T.Volume"],
-        //   avgPrice: r["Avg Price"],
-        //   oi: r["OI"]
-        // });
-      }
-      
+
       if (!strike) {
-        console.log('Skipping record - no strike:', r);
+        console.log("Skipping record - no strike:", r);
         return;
       }
 
@@ -101,37 +85,29 @@ const OptionsAnalysis = () => {
       }
       map[strike].push(metrics);
     });
-    
-    // console.log('Grouped strikes:', Object.keys(map).length);
-    // console.log('First few strikes:', Object.keys(map).slice(0, 5));
 
     // For each strike, sort by LTP (higher = CE, lower = PE)
     const finalMap = {};
-    Object.keys(map).forEach(strike => {
+    Object.keys(map).forEach((strike) => {
       const records = map[strike];
-      
-      // console.log(`Strike ${strike}: ${records.length} records, LTPs:`, records.map(r => r.ltp));
-      
+
       if (records.length >= 2) {
         // Sort by LTP descending
         records.sort((a, b) => b.ltp - a.ltp);
-        
+
         finalMap[strike] = {
           CE: records[0], // Higher LTP = Call
-          PE: records[1]  // Lower LTP = Put
+          PE: records[1], // Lower LTP = Put
         };
-      } else if (records.length === 1) {
-        // If only one record, we can't determine CE/PE, skip this strike
-        // console.log(`Skipping strike ${strike}: only one record`);
       }
     });
 
-    const strikes = Object.keys(finalMap).sort((a, b) => parseFloat(a) - parseFloat(b));
-    // console.log('Final processed strikes:', strikes.length);
-    // console.log('Strikes:', strikes);
+    const strikes = Object.keys(finalMap).sort(
+      (a, b) => parseFloat(a) - parseFloat(b)
+    );
 
     if (strikes.length === 0) {
-      // console.log('No valid strike pairs found');
+      console.log("No valid strike pairs found");
       return;
     }
 
@@ -142,7 +118,7 @@ const OptionsAnalysis = () => {
       diffAvgVol: { min: Infinity, max: -Infinity },
       avgratio: { min: Infinity, max: -Infinity },
       sumAvgOi: { min: Infinity, max: -Infinity },
-      diffAvgOi: { min: Infinity, max: -Infinity }
+      diffAvgOi: { min: Infinity, max: -Infinity },
     };
 
     const rowData = strikes.map((strike) => {
@@ -155,7 +131,8 @@ const OptionsAnalysis = () => {
       const sumLtpvol = CE.ltpVol + PE.ltpVol;
       const sumAvgvol = CE.avgVol + PE.avgVol;
       const sumAvgOi = CE.avgOi + PE.avgOi;
-      const avgratio = diffAvgVol !== 0 ? Math.abs((sumAvgvol / diffAvgVol)/10) : 0;
+      const avgratio =
+        diffAvgVol !== 0 ? Math.abs(sumAvgvol / diffAvgVol / 10) : 0;
 
       newStats.sumLtpvol.min = Math.min(newStats.sumLtpvol.min, sumLtpvol);
       newStats.sumLtpvol.max = Math.max(newStats.sumLtpvol.max, sumLtpvol);
@@ -172,15 +149,15 @@ const OptionsAnalysis = () => {
       newStats.diffAvgOi.min = Math.min(newStats.diffAvgOi.min, diffAvgOi);
       newStats.diffAvgOi.max = Math.max(newStats.diffAvgOi.max, diffAvgOi);
 
-      return { 
-        strike, 
-        diffLtpVol, 
-        diffAvgVol, 
-        diffAvgOi, 
-        sumLtpvol, 
-        sumAvgvol, 
-        sumAvgOi, 
-        avgratio 
+      return {
+        strike,
+        diffLtpVol,
+        diffAvgVol,
+        diffAvgOi,
+        sumLtpvol,
+        sumAvgvol,
+        sumAvgOi,
+        avgratio,
       };
     });
 
@@ -201,13 +178,15 @@ const OptionsAnalysis = () => {
     setProcessedData(sorted);
   };
 
-  const filteredData = processedData.filter(row => 
+  const filteredData = processedData.filter((row) =>
     row.strike.toLowerCase().includes(searchFilter.toLowerCase())
   );
 
   const playAlertSound = () => {
-    const audio = new Audio('https://actions.google.com/sounds/v1/alarms/beep_short.ogg');
-    audio.play().catch(e => console.log('Could not play sound:', e));
+    const audio = new Audio(
+      "https://actions.google.com/sounds/v1/alarms/beep_short.ogg"
+    );
+    audio.play().catch((e) => console.log("Could not play sound:", e));
   };
 
   useEffect(() => {
@@ -226,25 +205,55 @@ const OptionsAnalysis = () => {
   }, [fyersData]);
 
   useEffect(() => {
-    const hasHighlight = processedData.some(r => 
-      r.diffLtpVol < 0 && r.diffAvgVol > 0 && r.avgratio >= 0.1 && r.avgratio <= 1 && r.diffAvgOi > 0
+    const hasHighlight = processedData.some(
+      (r) =>
+        r.diffLtpVol < 0 &&
+        r.diffAvgVol > 0 &&
+        r.avgratio >= 0.1 &&
+        r.avgratio <= 1 &&
+        r.diffAvgOi > 0
     );
-    
+
     if (hasHighlight) {
       playAlertSound();
-      const firstHighlightIndex = processedData.findIndex(r => 
-        r.diffLtpVol < 0 && r.diffAvgVol > 0 && r.avgratio >= 0.1 && r.avgratio <= 1 && r.diffAvgOi > 0
+      const firstHighlightIndex = processedData.findIndex(
+        (r) =>
+          r.diffLtpVol < 0 &&
+          r.diffAvgVol > 0 &&
+          r.avgratio >= 0.1 &&
+          r.avgratio <= 1 &&
+          r.diffAvgOi > 0
       );
       if (firstHighlightIndex !== -1) {
         setTimeout(() => {
-          const rowElement = document.querySelector(`tr[data-index="${firstHighlightIndex}"]`);
+          const rowElement = document.querySelector(
+            `tr[data-index="${firstHighlightIndex}"]`
+          );
           if (rowElement) {
-            rowElement.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            rowElement.scrollIntoView({ behavior: "smooth", block: "center" });
           }
         }, 100);
       }
     }
   }, [processedData]);
+
+  // New effect to scroll to the highest LTP Sum row
+  useEffect(() => {
+    if (stats && processedData.length > 0) {
+      const maxLTPIndex = processedData.findIndex(
+        (r) => r.sumLtpvol === stats.sumLtpvol.max
+      );
+
+      if (maxLTPIndex !== -1) {
+        setTimeout(() => {
+          const rowElement = document.querySelector(`tr[data-max-ltp="true"]`);
+          if (rowElement) {
+            rowElement.scrollIntoView({ behavior: "smooth", block: "center" });
+          }
+        }, 200);
+      }
+    }
+  }, [stats, processedData]);
 
   if (loading) {
     return (
@@ -330,10 +339,12 @@ const OptionsAnalysis = () => {
           }
         }
       `}</style>
-      
+
       <div className="max-w-7xl mx-auto">
-        <h2 className="text-xl sm:text-2xl font-bold mb-3 sm:mb-4">Options Analysis</h2>
-        
+        <h2 className="text-xl sm:text-2xl font-bold mb-3 sm:mb-4">
+          Options Analysis
+        </h2>
+
         <div className="mb-3 sm:mb-4 flex flex-col sm:flex-row gap-2 items-start sm:items-center">
           <input
             type="text"
@@ -353,68 +364,145 @@ const OptionsAnalysis = () => {
               <table className="options-table">
                 <thead>
                   <tr>
-                    <th onClick={() => handleSort(0, 'strike')}>
-                      Strike {sortConfig.key === 'strike' && (sortConfig.ascending ? '↑' : '↓')}
+                    <th onClick={() => handleSort(0, "strike")}>
+                      Strike{" "}
+                      {sortConfig.key === "strike" &&
+                        (sortConfig.ascending ? "↑" : "↓")}
                     </th>
-                    <th onClick={() => handleSort(1, 'sumLtpvol')}>
-                      LTP Sum<br/>(CE+PE) {sortConfig.key === 'sumLtpvol' && (sortConfig.ascending ? '↑' : '↓')}
+                    <th onClick={() => handleSort(1, "sumLtpvol")}>
+                      LTP Sum
+                      <br />
+                      (CE+PE){" "}
+                      {sortConfig.key === "sumLtpvol" &&
+                        (sortConfig.ascending ? "↑" : "↓")}
                     </th>
-                    <th onClick={() => handleSort(2, 'diffLtpVol')}>
-                      LTP Diff<br/>(CE-PE) {sortConfig.key === 'diffLtpVol' && (sortConfig.ascending ? '↑' : '↓')}
+                    <th onClick={() => handleSort(2, "diffLtpVol")}>
+                      LTP Diff
+                      <br />
+                      (CE-PE){" "}
+                      {sortConfig.key === "diffLtpVol" &&
+                        (sortConfig.ascending ? "↑" : "↓")}
                     </th>
-                    <th onClick={() => handleSort(3, 'sumAvgvol')}>
-                      Avg Sum<br/>(CE+PE) {sortConfig.key === 'sumAvgvol' && (sortConfig.ascending ? '↑' : '↓')}
+                    <th onClick={() => handleSort(3, "sumAvgvol")}>
+                      Avg Sum
+                      <br />
+                      (CE+PE){" "}
+                      {sortConfig.key === "sumAvgvol" &&
+                        (sortConfig.ascending ? "↑" : "↓")}
                     </th>
-                    <th onClick={() => handleSort(4, 'diffAvgVol')}>
-                      Avg Diff<br/>(CE-PE) {sortConfig.key === 'diffAvgVol' && (sortConfig.ascending ? '↑' : '↓')}
+                    <th onClick={() => handleSort(4, "diffAvgVol")}>
+                      Avg Diff
+                      <br />
+                      (CE-PE){" "}
+                      {sortConfig.key === "diffAvgVol" &&
+                        (sortConfig.ascending ? "↑" : "↓")}
                     </th>
-                    <th onClick={() => handleSort(5, 'avgratio')}>
-                      Avg Ratio<br/>(CE-PE) {sortConfig.key === 'avgratio' && (sortConfig.ascending ? '↑' : '↓')}
+                    <th onClick={() => handleSort(5, "avgratio")}>
+                      Avg Ratio
+                      <br />
+                      (CE-PE){" "}
+                      {sortConfig.key === "avgratio" &&
+                        (sortConfig.ascending ? "↑" : "↓")}
                     </th>
-                    <th onClick={() => handleSort(6, 'sumAvgOi')}>
-                      LTP OI Sum<br/>(CE+PE) {sortConfig.key === 'sumAvgOi' && (sortConfig.ascending ? '↑' : '↓')}
+                    <th onClick={() => handleSort(6, "sumAvgOi")}>
+                      LTP OI Sum
+                      <br />
+                      (CE+PE){" "}
+                      {sortConfig.key === "sumAvgOi" &&
+                        (sortConfig.ascending ? "↑" : "↓")}
                     </th>
-                    <th onClick={() => handleSort(7, 'diffAvgOi')}>
-                      LTP OI Diff<br/>(CE-PE) {sortConfig.key === 'diffAvgOi' && (sortConfig.ascending ? '↑' : '↓')}
+                    <th onClick={() => handleSort(7, "diffAvgOi")}>
+                      LTP OI Diff
+                      <br />
+                      (CE-PE){" "}
+                      {sortConfig.key === "diffAvgOi" &&
+                        (sortConfig.ascending ? "↑" : "↓")}
                     </th>
                   </tr>
                 </thead>
                 <tbody>
                   {filteredData.map((row, idx) => {
-                    const highlight = row.diffLtpVol < 0 && row.diffAvgVol > 0 && row.avgratio >= 0.1 && row.avgratio <= 1 && row.diffAvgOi > 0;
-                    const maxLTP = stats && row.sumLtpvol === stats.sumLtpvol.max;
-                    
+                    const highlight =
+                      row.diffLtpVol < 0 &&
+                      row.diffAvgVol > 0 &&
+                      row.avgratio >= 0.1 &&
+                      row.avgratio <= 1 &&
+                      row.diffAvgOi > 0;
+                    const maxLTP =
+                      stats && row.sumLtpvol === stats.sumLtpvol.max;
+
                     return (
-                      <tr 
+                      <tr
                         key={`${row.strike}-${idx}`}
                         data-index={idx}
-                        className={highlight ? 'blink' : ''}
+                        data-max-ltp={maxLTP ? "true" : "false"}
+                        className={highlight ? "blink" : ""}
                       >
                         <td>{row.strike}</td>
-                        <td 
-                          style={{ 
-                            backgroundColor: stats ? getColor(row.sumLtpvol, stats.sumLtpvol) : 'white',
-                            border: maxLTP ? '2px solid orange' : '1px solid #d1d5db'
+                        <td
+                          style={{
+                            backgroundColor: stats
+                              ? getColor(row.sumLtpvol, stats.sumLtpvol)
+                              : "white",
+                            border: maxLTP
+                              ? "2px solid orange"
+                              : "1px solid #d1d5db",
                           }}
                         >
                           {fmt(row.sumLtpvol)}
                         </td>
-                        <td style={{ backgroundColor: stats ? getColor(row.diffLtpVol, stats.diffLtpVol) : 'white' }}>
+                        <td
+                          style={{
+                            backgroundColor: stats
+                              ? getColor(row.diffLtpVol, stats.diffLtpVol)
+                              : "white",
+                          }}
+                        >
                           {fmt(row.diffLtpVol)}
                         </td>
-                        <td style={{ backgroundColor: stats ? getColor(row.sumAvgvol, stats.sumAvgvol) : 'white' }}>
+                        <td
+                          style={{
+                            backgroundColor: stats
+                              ? getColor(row.sumAvgvol, stats.sumAvgvol)
+                              : "white",
+                          }}
+                        >
                           {fmt(row.sumAvgvol)}
                         </td>
-                        <td style={{ backgroundColor: stats ? getColor(row.diffAvgVol, stats.diffAvgVol) : 'white' }}>
+                        <td
+                          style={{
+                            backgroundColor: stats
+                              ? getColor(row.diffAvgVol, stats.diffAvgVol)
+                              : "white",
+                          }}
+                        >
                           {fmt(row.diffAvgVol)}
                         </td>
-                        <td style={{ backgroundColor: stats ? getColor(row.avgratio, stats.avgratio) : 'white' }}>
+                        <td
+                          style={{
+                            backgroundColor: stats
+                              ? getColor(row.avgratio, stats.avgratio)
+                              : "white",
+                          }}
+                        >
                           {fmt1(row.avgratio)}
                         </td>
-                        <td style={{ backgroundColor: stats ? getColor(row.sumAvgOi, stats.sumAvgOi) : 'white' }}>
+                        <td
+                          style={{
+                            backgroundColor: stats
+                              ? getColor(row.sumAvgOi, stats.sumAvgOi)
+                              : "white",
+                          }}
+                        >
                           {fmt(row.sumAvgOi)}
                         </td>
-                        <td style={{ backgroundColor: stats ? getColor(row.diffAvgOi, stats.diffAvgOi) : 'white' }}>
+                        <td
+                          style={{
+                            backgroundColor: stats
+                              ? getColor(row.diffAvgOi, stats.diffAvgOi)
+                              : "white",
+                          }}
+                        >
                           {fmt(row.diffAvgOi)}
                         </td>
                       </tr>
@@ -425,10 +513,12 @@ const OptionsAnalysis = () => {
             </div>
           </div>
         </div>
-        
+
         {processedData.length === 0 && !loading && (
           <div className="text-center mt-8 text-gray-600">
-            {fyersData.length === 0 ? 'No data available' : 'Processing data...'}
+            {fyersData.length === 0
+              ? "No data available"
+              : "Processing data..."}
           </div>
         )}
       </div>
