@@ -272,78 +272,117 @@ const OptionsAnalysis = () => {
   }
 
   return (
-    <div className="min-h-screen p-3 sm:p-5 bg-gray-50">
+    <div className="h-full p-3 sm:p-5 bg-gray-50">
       <style>{`
-        @keyframes blinker {
-          50% { opacity: 0; }
-        }
-        .blink {
-          animation: blinker 1s linear infinite;
-        }
-        .table-wrapper {
-          overflow-x: auto;
-          -webkit-overflow-scrolling: touch;
-        }
-        .table-container {
-          max-height: 600px;
-          overflow-y: auto;
-          overflow-x: auto;
-        }
-        .options-table {
-          width: 100%;
-          border-collapse: separate;
-          border-spacing: 0;
-          font-size: 11px;
-        }
-        .options-table thead {
-          position: sticky;
-          top: 0;
-          z-index: 10;
-          background: #f4f4f4;
-        }
-        .options-table th {
-          background: #f4f4f4;
-          border: 1px solid #ccc;
-          padding: 8px 6px;
-          text-align: center;
-          font-weight: 600;
-          cursor: pointer;
-          white-space: nowrap;
-          user-select: none;
-          min-width: 80px;
-        }
-        .options-table th:hover {
-          background: #e8e8e8;
-        }
-        .options-table td {
-          border: 1px solid #d1d5db;
-          padding: 6px 8px;
-          text-align: right;
-          white-space: nowrap;
-        }
-        .options-table td:first-child {
-          text-align: left;
-          font-weight: 500;
-        }
-        .options-table tbody tr:hover {
-          background: rgba(243, 244, 246, 0.5) !important;
-        }
-        @media (max-width: 768px) {
-          .options-table {
-            font-size: 10px;
-          }
-          .options-table th,
-          .options-table td {
-            padding: 4px;
-            min-width: 70px;
-          }
-        }
-      `}</style>
+  @keyframes blinker {
+    50% { opacity: 0; }
+  }
+  .blink {
+    animation: blinker 1s linear infinite;
+  }
 
-      <div className="max-w-7xl mx-auto">
-        <h2 className="text-xl sm:text-2xl font-bold mb-3 sm:mb-4">
+  /* Table wrappers */
+  .table-wrapper {
+    width: 100%;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .table-container {
+    max-height: calc(100vh - 250px); /* control vertical scroll area */
+    overflow-y: auto;
+    overflow-x: hidden;
+    position: relative;
+  }
+
+  /* Table styles */
+  .options-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 12px;
+    min-width: 700px; /* ensures good layout on mobile */
+  }
+
+  .options-table thead th {
+    position: sticky;
+    top: 0;
+    z-index: 5;
+    background: #f4f4f4;
+    border: 1px solid #ccc;
+    padding: 8px 6px;
+    text-align: center;
+    font-weight: 600;
+    cursor: pointer;
+    white-space: nowrap;
+    user-select: none;
+    min-width: 80px;
+    transition: background 0.2s ease;
+  }
+
+  .options-table thead th:hover {
+    background: #e8e8e8;
+  }
+
+  .options-table td {
+    border: 1px solid #d1d5db;
+    padding: 6px 8px;
+    text-align: right;
+    white-space: nowrap;
+  }
+
+  .options-table td:first-child {
+    text-align: left;
+    font-weight: 500;
+  }
+
+  .options-table tbody tr:hover {
+    background: rgba(243, 244, 246, 0.5);
+  }
+
+  /* Add subtle shadow under sticky header */
+  .options-table thead th {
+    box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+  }
+
+  /* Responsive tweaks */
+  @media (max-width: 1024px) {
+    .options-table {
+      font-size: 11px;
+      min-width: 600px;
+    }
+  }
+
+  @media (max-width: 768px) {
+    .options-table {
+      font-size: 10px;
+      min-width: 500px;
+    }
+    .options-table th,
+    .options-table td {
+      padding: 4px;
+    }
+  }
+
+  @media (max-width: 480px) {
+    .table-wrapper {
+      border: 1px solid #ddd;
+      border-radius: 8px;
+    }
+    .options-table {
+      font-size: 9px;
+      min-width: 400px;
+    }
+    .options-table th,
+    .options-table td {
+      padding: 3px;
+    }
+  }
+`}</style>
+
+      <div className="max-w-7xl mx-auto max-h-full">
+        {/* <h2 className="text-xl sm:text-2xl font-bold mb-3 sm:mb-4">
           Options Analysis
-        </h2>
+        </h2> */}
 
         <div className="mb-3 sm:mb-4 flex flex-col sm:flex-row gap-2 items-start sm:items-center">
           <input
@@ -358,10 +397,10 @@ const OptionsAnalysis = () => {
           </div>
         </div>
 
-        <div className="bg-white rounded-lg shadow-md overflow-hidden">
+        <div className="bg-white rounded-lg shadow-md  overflow-hidden max-h-[calc(100vh-250px)]">
           <div className="table-wrapper">
             <div className="table-container">
-              <table className="options-table">
+              <table className="options-table ">
                 <thead>
                   <tr>
                     <th onClick={() => handleSort(0, "strike")}>
