@@ -207,7 +207,7 @@ const OptionsAnalysis = () => {
     <div className="h-full p-4 bg-gray-50">
       <style>{`
       .table-container {
-        max-height: calc(100vh - 180px); /* ✅ Adjust height to fit screen */
+        max-height: calc(100vh - 220px); /* ✅ Adjust height to fit screen */
         overflow-y: auto;
         overflow-x: auto;
         border: 1px solid #d1d5db;
