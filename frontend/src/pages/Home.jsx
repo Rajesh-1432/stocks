@@ -37,10 +37,9 @@ const OptionsAnalysis = () => {
   const fetchFyersData = async () => {
     try {
       setLoading(true);
-      const response = await fetch("/api/auth/get-fyers-data");
-      const data = await response.json();
-      const finalData = data?.data || data || [];
-      setFyersData(finalData);
+      const response = await api.get("/api/auth/get-fyers-data");
+      const data = response.data?.data || response.data || [];
+      setFyersData(data);
     } catch (error) {
       console.error("Error fetching fyers data:", error);
       setError("Failed to fetch data");
