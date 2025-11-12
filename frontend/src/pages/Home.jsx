@@ -1,5 +1,4 @@
 import React, { useEffect, useState } from "react";
-import api from "@/utils/api";
 
 const OptionsAnalysis = () => {
   const [fyersData, setFyersData] = useState([]);
@@ -38,9 +37,10 @@ const OptionsAnalysis = () => {
   const fetchFyersData = async () => {
     try {
       setLoading(true);
-      const response = await api.get("/api/auth/get-fyers-data");
-      const data = response.data?.data || response.data || [];
-      setFyersData(data);
+      const response = await fetch("/api/auth/get-fyers-data");
+      const data = await response.json();
+      const finalData = data?.data || data || [];
+      setFyersData(finalData);
     } catch (error) {
       console.error("Error fetching fyers data:", error);
       setError("Failed to fetch data");
@@ -93,13 +93,10 @@ const OptionsAnalysis = () => {
     const newStats = {
       sumLtpvol: { min: Infinity, max: -Infinity },
       diffLtpVol: { min: Infinity, max: -Infinity },
-      sumAvgvol: { min: Infinity, max: -Infinity },
       diffAvgVol: { min: Infinity, max: -Infinity },
       avgratio: { min: Infinity, max: -Infinity },
-      sumAvgOi: { min: Infinity, max: -Infinity },
       diffAvgOi: { min: Infinity, max: -Infinity },
       diffltpavg: { min: Infinity, max: -Infinity },
-      vwapSum: { min: Infinity, max: -Infinity },
       vwapDiff: { min: Infinity, max: -Infinity },
     };
 
@@ -112,7 +109,6 @@ const OptionsAnalysis = () => {
       const diffAvgOi = CE.avgOi - PE.avgOi;
       const sumLtpvol = CE.ltpVol + PE.ltpVol;
       const sumAvgvol = CE.avgVol + PE.avgVol;
-      const sumAvgOi = CE.avgOi + PE.avgOi;
       const diffltpavg = diffLtpVol - diffAvgVol;
       const avgratio =
         diffAvgVol !== 0 ? Math.abs(sumAvgvol / diffAvgVol / 10) : 0;
@@ -120,7 +116,6 @@ const OptionsAnalysis = () => {
       const ceVWAP = CE.vol ? CE.ltpVol / CE.vol : 0;
       const peVWAP = PE.vol ? PE.ltpVol / PE.vol : 0;
       const vwapDiff = ceVWAP - peVWAP;
-      const vwapSum = ceVWAP + peVWAP;
 
       const row = {
         strike,
@@ -128,12 +123,9 @@ const OptionsAnalysis = () => {
         diffAvgVol,
         diffAvgOi,
         sumLtpvol,
-        sumAvgvol,
-        sumAvgOi,
         avgratio,
         diffltpavg,
         vwapDiff,
-        vwapSum,
       };
 
       Object.keys(newStats).forEach((key) => {
@@ -177,10 +169,18 @@ const OptionsAnalysis = () => {
     const interval = setInterval(fetchFyersData, 10000);
     return () => clearInterval(interval);
   }, []);
+
   useEffect(() => {
-    const row = document.getElementById("highlight-row");
-    if (row) {
-      row.scrollIntoView({ behavior: "smooth", block: "center" });
+    if (processedData.length > 0) {
+      // Find the row with highest LTP Sum
+      const maxLtpSumRow = processedData.reduce((max, row) => 
+        row.sumLtpvol > max.sumLtpvol ? row : max
+      , processedData[0]);
+      
+      const rowElement = document.getElementById(`row-${maxLtpSumRow.strike}`);
+      if (rowElement) {
+        rowElement.scrollIntoView({ behavior: "smooth", block: "center" });
+      }
     }
   }, [processedData]);
 
@@ -207,7 +207,7 @@ const OptionsAnalysis = () => {
     <div className="h-full p-4 bg-gray-50">
       <style>{`
       .table-container {
-        max-height: calc(100vh - 220px); /* ✅ Adjust height to fit screen */
+        max-height: calc(100vh - 220px);
         overflow-y: auto;
         overflow-x: auto;
         border: 1px solid #d1d5db;
@@ -218,7 +218,7 @@ const OptionsAnalysis = () => {
         width: 100%;
         border-collapse: collapse;
         font-size: 12px;
-        min-width: 900px; /* ✅ prevent squish */
+        min-width: 900px;
       }
 
       .options-table thead th {
@@ -266,13 +266,10 @@ const OptionsAnalysis = () => {
               <th onClick={() => handleSort(0, "strike")}>Strike</th>
               <th onClick={() => handleSort(1, "sumLtpvol")}>LTP Sum</th>
               <th onClick={() => handleSort(2, "diffLtpVol")}>LTP Diff</th>
-              <th onClick={() => handleSort(3, "sumAvgvol")}>Avg Sum</th>
               <th onClick={() => handleSort(4, "diffAvgVol")}>Avg Diff</th>
               <th onClick={() => handleSort(5, "avgratio")}>Avg Ratio</th>
-              <th onClick={() => handleSort(6, "sumAvgOi")}>LTP OI Sum</th>
               <th onClick={() => handleSort(7, "diffAvgOi")}>LTP OI Diff</th>
               <th onClick={() => handleSort(8, "diffltpavg")}>LTP Avg Diff</th>
-              <th onClick={() => handleSort(9, "vwapSum")}>VWAP Sum</th>
               <th onClick={() => handleSort(10, "vwapDiff")}>VWAP Diff</th>
             </tr>
           </thead>
@@ -290,7 +287,7 @@ const OptionsAnalysis = () => {
                 <tr
                   key={idx}
                   className={highlight ? "blink" : ""}
-                  id={highlight ? "highlight-row" : undefined}
+                  id={`row-${row.strike}`}
                 >
                   <td style={{ textAlign: "left" }}>{row.strike}</td>
                   <td
@@ -309,13 +306,6 @@ const OptionsAnalysis = () => {
                   </td>
                   <td
                     style={{
-                      background: getColor(row.sumAvgvol, stats.sumAvgvol),
-                    }}
-                  >
-                    {fmt(row.sumAvgvol)}
-                  </td>
-                  <td
-                    style={{
                       background: getColor(row.diffAvgVol, stats.diffAvgVol),
                     }}
                   >
@@ -330,13 +320,6 @@ const OptionsAnalysis = () => {
                   </td>
                   <td
                     style={{
-                      background: getColor(row.sumAvgOi, stats.sumAvgOi),
-                    }}
-                  >
-                    {fmt(row.sumAvgOi)}
-                  </td>
-                  <td
-                    style={{
                       background: getColor(row.diffAvgOi, stats.diffAvgOi),
                     }}
                   >
@@ -348,11 +331,6 @@ const OptionsAnalysis = () => {
                     }}
                   >
                     {fmt(row.diffltpavg)}
-                  </td>
-                  <td
-                    style={{ background: getColor(row.vwapSum, stats.vwapSum) }}
-                  >
-                    {fmt1(row.vwapSum)}
                   </td>
                   <td
                     style={{
