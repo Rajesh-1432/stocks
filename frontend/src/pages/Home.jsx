@@ -27,8 +27,15 @@ const OptionsAnalysis = () => {
   };
 
   const getColor = (value, stat) => {
-    if (!stat || stat.max === stat.min) return "white";
+    if (
+      !stat ||
+      !isFinite(stat.min) ||
+      !isFinite(stat.max) ||
+      stat.max === stat.min
+    )
+      return "white";
     let ratio = (value - stat.min) / (stat.max - stat.min);
+    ratio = Math.max(0, Math.min(1, ratio)); // Clamp between 0 and 1
     let red = Math.round(255 * (1 - ratio));
     let green = Math.round(255 * ratio);
     let blue = 200;
@@ -98,6 +105,7 @@ const OptionsAnalysis = () => {
       diffAvgOi: { min: Infinity, max: -Infinity },
       diffltpavg: { min: Infinity, max: -Infinity },
       vwapDiff: { min: Infinity, max: -Infinity },
+      WAPRatio: { min: Infinity, max: -Infinity },
     };
 
     const rowData = strikes.map((strike) => {
@@ -116,6 +124,7 @@ const OptionsAnalysis = () => {
       const ceVWAP = CE.vol ? CE.ltpVol / CE.vol : 0;
       const peVWAP = PE.vol ? PE.ltpVol / PE.vol : 0;
       const vwapDiff = ceVWAP - peVWAP;
+      const WAPRatio = peVWAP !== 0 ? ceVWAP / peVWAP : 0;
 
       const row = {
         strike,
@@ -126,11 +135,19 @@ const OptionsAnalysis = () => {
         avgratio,
         diffltpavg,
         vwapDiff,
+        WAPRatio,
       };
 
       Object.keys(newStats).forEach((key) => {
         newStats[key].min = Math.min(newStats[key].min, row[key]);
         newStats[key].max = Math.max(newStats[key].max, row[key]);
+      });
+      Object.keys(newStats).forEach((key) => {
+        const value = row[key];
+        if (isFinite(value)) {
+          newStats[key].min = Math.min(newStats[key].min, value);
+          newStats[key].max = Math.max(newStats[key].max, value);
+        }
       });
 
       return row;
@@ -173,10 +190,11 @@ const OptionsAnalysis = () => {
   useEffect(() => {
     if (processedData.length > 0) {
       // Find the row with highest LTP Sum
-      const maxLtpSumRow = processedData.reduce((max, row) => 
-        row.sumLtpvol > max.sumLtpvol ? row : max
-      , processedData[0]);
-      
+      const maxLtpSumRow = processedData.reduce(
+        (max, row) => (row.sumLtpvol > max.sumLtpvol ? row : max),
+        processedData[0]
+      );
+
       const rowElement = document.getElementById(`row-${maxLtpSumRow.strike}`);
       if (rowElement) {
         rowElement.scrollIntoView({ behavior: "smooth", block: "center" });
@@ -271,6 +289,7 @@ const OptionsAnalysis = () => {
               <th onClick={() => handleSort(7, "diffAvgOi")}>LTP OI Diff</th>
               <th onClick={() => handleSort(8, "diffltpavg")}>LTP Avg Diff</th>
               <th onClick={() => handleSort(10, "vwapDiff")}>VWAP Diff</th>
+              <th onClick={() => handleSort(11, "WAPRatio")}>WAP Ratio</th>
             </tr>
           </thead>
 
@@ -338,6 +357,13 @@ const OptionsAnalysis = () => {
                     }}
                   >
                     {fmt1(row.vwapDiff)}
+                  </td>
+                  <td
+                    style={{
+                      background: getColor(row.WAPRatio, stats.WAPRatio),
+                    }}
+                  >
+                    {fmt1(row.WAPRatio)}
                   </td>
                 </tr>
               );
